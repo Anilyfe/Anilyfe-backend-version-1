@@ -1,0 +1,6 @@
+const prisma=require('./prisma');
+async function settingNumber(key,fallback){const s=await prisma.marketplaceSetting.findUnique({where:{key}});return s?Number(s.value):fallback}
+async function commissionRate(){return settingNumber('commissionRate',Number(process.env.DEFAULT_COMMISSION_RATE||15))}
+async function shippingForSeller(seller,buyerState){const rules=seller.settings?.deliveryRules||{};const dispatchState=seller.state||seller.settings?.dispatchState||'';const same=dispatchState&&buyerState&&dispatchState.toLowerCase()===buyerState.toLowerCase();if(same&&rules.freeShippingInState)return 0;return same?Number(rules.sameStateFee||0):Number(rules.outsideStateFee||0)}
+async function calculateSellerTotals(seller,items,buyerState){const subtotal=items.reduce((n,i)=>n+Number(i.unitPrice)*i.quantity,0);const shipping=await shippingForSeller(seller,buyerState);const buyerFees=0;const rate=await commissionRate();const commission=Math.round((subtotal+shipping+buyerFees)*rate)/100;return {subtotal,shipping,buyerFees,commissionRate:rate,commissionAmount:commission,sellerEarnings:Math.max(0,subtotal+shipping-commission),total:subtotal+shipping+buyerFees}}
+module.exports={settingNumber,commissionRate,shippingForSeller,calculateSellerTotals};
