@@ -1,0 +1,6 @@
+const express=require('express'); const prisma=require('../lib/prisma'); const {ok,fail,asyncHandler}=require('../lib/http'); const {requireAuth}=require('../middleware/auth');
+const router=express.Router();
+router.get('/',requireAuth,asyncHandler(async(req,res)=>{const rows=await prisma.notification.findMany({where:{OR:[{userId:req.user.id},{audienceRole:{in:req.user.role==='SUPER_ADMIN'?['ADMIN','SUPER_ADMIN']:[req.user.role]}}]},orderBy:{createdAt:'desc'},take:100});return ok(res,rows)}));
+router.patch('/:id/read',requireAuth,asyncHandler(async(req,res)=>{const n=await prisma.notification.findUnique({where:{id:req.params.id}});if(!n|| (n.userId!==req.user.id&&!(req.user.role==='SUPER_ADMIN'?['ADMIN','SUPER_ADMIN']:[req.user.role]).includes(n.audienceRole)))return fail(res,404,'NOTIFICATION_NOT_FOUND','Notification not found.');return ok(res,await prisma.notification.update({where:{id:n.id},data:{read:true}}))}));
+router.post('/read-all',requireAuth,asyncHandler(async(req,res)=>{await prisma.notification.updateMany({where:{OR:[{userId:req.user.id},{audienceRole:{in:req.user.role==='SUPER_ADMIN'?['ADMIN','SUPER_ADMIN']:[req.user.role]}}],read:false},data:{read:true}});return ok(res,{updated:true})}));
+module.exports=router;
