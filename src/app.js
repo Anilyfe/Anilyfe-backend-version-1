@@ -1,0 +1,18 @@
+require('dotenv').config();
+const express=require('express');const cors=require('cors');const helmet=require('helmet');const rateLimit=require('express-rate-limit');const path=require('path');
+const auth=require('./routes/auth');const products=require('./routes/products');const sellers=require('./routes/sellers');const cart=require('./routes/cart');const orders=require('./routes/orders');const payments=require('./routes/payments');const reviews=require('./routes/reviews');const notifications=require('./routes/notifications');const support=require('./routes/support');const inventory=require('./routes/inventory');const payouts=require('./routes/payouts');const withdrawals=require('./routes/withdrawals');const admin=require('./routes/admin');const publicRoutes=require('./routes/public');const analytics=require('./routes/analytics');const uploads=require('./routes/uploads');const reconciliation=require('./routes/reconciliation');
+const {notFound,errorHandler}=require('./middleware/error');
+const {paystackModeGuard}=require('./middleware/paystack-mode');
+const app=express();
+app.set('trust proxy',1);app.use(helmet({crossOriginResourcePolicy:false}));
+const configuredOrigins=(process.env.FRONTEND_ORIGIN||'').split(',').map(x=>x.trim()).filter(Boolean);const origins=configuredOrigins.length?configuredOrigins:(process.env.NODE_ENV==='production'?['https://myanilyfe.vercel.app','https://anilyfe-frontend.vercel.app']:['http://localhost:5500','http://127.0.0.1:5500','http://localhost:4000']);app.use(cors({origin:(origin,cb)=>{if(!origin||origins.includes(origin))return cb(null,true);cb(new Error('CORS origin not allowed'));},credentials:true}));
+app.use(rateLimit({windowMs:15*60*1000,limit:300,standardHeaders:'draft-8',legacyHeaders:false,handler:(req,res)=>res.status(429).json({success:false,error:{code:'RATE_LIMITED',message:'Too many requests. Please try again shortly.'}})}));
+app.use('/api/payments/webhook',express.raw({type:'application/json'}));
+app.use('/api/withdrawals/webhook',express.raw({type:'application/json'}));
+app.use(express.json({limit:'2mb'}));app.use(express.urlencoded({extended:true,limit:'2mb'}));
+app.use('/api/payments',paystackModeGuard);
+app.get('/api/health',(req,res)=>res.json({success:true,service:'Anilyfe API',status:'ok',timestamp:new Date().toISOString()}));
+app.use('/uploads',express.static(path.resolve(process.env.UPLOAD_DIR||'uploads')));
+app.get('/health',(req,res)=>res.redirect('/api/health'));app.use('/api/auth',auth);app.use('/api/products',products);app.use('/api/sellers',sellers);app.use('/api/cart',cart);app.use('/api/orders',orders);app.use('/api/payments',payments);app.use('/api/reviews',reviews);app.use('/api/notifications',notifications);app.use('/api/support',support);app.use('/api/inventory',inventory);app.use('/api/payouts',payouts);app.use('/api/withdrawals',withdrawals);app.use('/api/admin/reconciliation',reconciliation);app.use('/api/admin',admin);app.use('/api/analytics',analytics);app.use('/api/seller/uploads',uploads);app.use('/api/uploads',uploads);app.use('/api',publicRoutes);
+app.use(notFound);app.use(errorHandler);
+module.exports=app;
