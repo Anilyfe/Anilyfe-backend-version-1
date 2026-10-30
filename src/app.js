@@ -5,7 +5,7 @@ const {notFound,errorHandler}=require('./middleware/error');
 const {paystackModeGuard}=require('./middleware/paystack-mode');
 const app=express();
 app.set('trust proxy',1);app.use(helmet({crossOriginResourcePolicy:false}));
-const configuredOrigins=(process.env.FRONTEND_ORIGIN||'').split(',').map(x=>x.trim()).filter(Boolean);const origins=configuredOrigins.length?configuredOrigins:(process.env.NODE_ENV==='production'?['https://myanilyfe.vercel.app','https://anilyfe-frontend.vercel.app']:['http://localhost:5500','http://127.0.0.1:5500','http://localhost:4000']);app.use(cors({origin:(origin,cb)=>{if(!origin||origins.includes(origin))return cb(null,true);cb(new Error('CORS origin not allowed'));},credentials:true}));
+const allowedOrigins=(process.env.FRONTEND_ORIGIN||'').split(',').map(x=>x.trim()).filter(Boolean);const origins=configuredOrigins.length?configuredOrigins:(process.env.NODE_ENV==='production'?['https://myanilyfe.vercel.app','https://anilyfe-frontend.vercel.app']:['http://localhost:5500','http://127.0.0.1:5500','http://localhost:4000']);app.use(cors({origin:(origin,cb)=>{if(!origin||origins.includes(origin))return cb(null,true);cb(new Error('CORS origin not allowed'));},credentials:true}));
 app.use(rateLimit({windowMs:15*60*1000,limit:300,standardHeaders:'draft-8',legacyHeaders:false,handler:(req,res)=>res.status(429).json({success:false,error:{code:'RATE_LIMITED',message:'Too many requests. Please try again shortly.'}})}));
 app.use('/api/payments/webhook',express.raw({type:'application/json'}));
 app.use('/api/withdrawals/webhook',express.raw({type:'application/json'}));
